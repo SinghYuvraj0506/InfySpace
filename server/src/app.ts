@@ -11,12 +11,11 @@ const corsOptions = {
   credentials: true,
 };
 
-
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/healthcheck", (req, res) => {
+app.get("/healthcheck", async (req, res) => {
   res.send("Hello guys welcome to infy space backend");
 });
 
