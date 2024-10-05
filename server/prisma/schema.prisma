@@ -39,6 +39,8 @@ model Accounts {
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 
+  @@unique([provider, accountEmail])
+
   @@map("accounts")
 }
 
