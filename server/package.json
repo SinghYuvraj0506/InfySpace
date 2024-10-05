@@ -1,0 +1,28 @@
+{
+  "name": "infyspace",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "prisma": "^5.20.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prestart": "bun run build",
+    "start": "node dist/index.js",
+    "dev": "bun --watch run src/index.ts"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@google-cloud/local-auth": "2.1.0",
+    "@prisma/client": "^5.20.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "googleapis": "105"
+  }
+}
