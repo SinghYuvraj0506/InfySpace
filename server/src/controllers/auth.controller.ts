@@ -4,6 +4,7 @@ import axios from "axios";
 import prisma from "../utils/db";
 import { ApiError } from "../utils/ApiError";
 import { getJWTFromPayload } from "../utils/jwt";
+import { ApiResponse } from "../utils/ApiResponse";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const REDIRECT_URI = process.env.REDIRECT_URI;
@@ -71,6 +72,15 @@ export const googleCallback = asyncHandler(
       httpOnly: true,
     });
 
-    res.redirect("/healthcheck");
+    res.redirect(`${process.env.ClIENT_URI}/dashboard`);
+  }
+);
+
+export const logout = asyncHandler(
+  async (req: Request, res: Response) => {
+    res.clearCookie("infy-space-token");
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Logged Out Successfully"));
   }
 );
