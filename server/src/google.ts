@@ -8,7 +8,7 @@ import { OAuth2Client } from "google-auth-library";
 fs.promises;
 
 // If modifying these scopes, delete token.json.
-const SCOPES = ["https://www.googleapis.com/auth/drive"];
+const SCOPES = ["https://www.googleapis.com/auth/drive","profile","email"];
 const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 
@@ -47,6 +47,7 @@ async function authorize() {
     scopes: SCOPES,
     keyfilePath: CREDENTIALS_PATH,
   });
+  console.log(client2)
   if (client2.credentials) {
     await saveCredentials(client2);
   }
@@ -138,6 +139,5 @@ async function listAndDonwloadFiles(authClient: OAuth2Client) {
 }
 
 // authorize().then((e)=>e && uploadFile(e,"")).catch(console.error);
-// authorize()
-//   .then((e) => e && listAndDonwloadFiles(e))
-//   .catch(console.error);
+authorize()
+  // .catch(console.error);

@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import DashboardLayout from "./pages/Dashboard/Layout";
 import ProtectRoutes from "./utils/ProtectRoutes";
 import { useAuth } from "./providers/AuthProvider";
+import Accounts from "./pages/Dashboard/Accounts";
 
 const router = (isAuthenticated: boolean, loading:boolean) => {
   return createBrowserRouter([
@@ -38,7 +39,7 @@ const router = (isAuthenticated: boolean, loading:boolean) => {
             },
             {
               path: "/dashboard/accounts",
-              element: <div>accounts</div>,
+              element: <Accounts/>,
             },
             {
               path: "/dashboard/data",

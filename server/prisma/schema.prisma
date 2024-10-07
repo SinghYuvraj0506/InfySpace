@@ -29,8 +29,8 @@ model Accounts {
 
   accessToken    String
   refreshToken   String
-  tokenExpiresAt DateTime
-  priority       Int
+  tokenExpiresAt DateTime?
+  priority       Int?
   provider       AccountProviders
 
   userId String
