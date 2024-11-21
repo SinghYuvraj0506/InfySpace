@@ -6,8 +6,11 @@ import DashboardLayout from "./pages/Dashboard/Layout";
 import ProtectRoutes from "./utils/ProtectRoutes";
 import { useAuth } from "./providers/AuthProvider";
 import Accounts from "./pages/Dashboard/Accounts";
+import { Toaster } from "react-hot-toast";
+import Data from "./pages/Dashboard/Data";
+import Transfers from "./pages/Dashboard/Transfers";
 
-const router = (isAuthenticated: boolean, loading:boolean) => {
+const router = (isAuthenticated: boolean, loading: boolean) => {
   return createBrowserRouter([
     {
       path: "/",
@@ -16,7 +19,11 @@ const router = (isAuthenticated: boolean, loading:boolean) => {
     {
       path: "/login",
       element: (
-        <ProtectRoutes navigateTo="/dashboard" allowed={!isAuthenticated} loading={loading} />
+        <ProtectRoutes
+          navigateTo="/dashboard"
+          allowed={!isAuthenticated}
+          loading={loading}
+        />
       ),
       children: [
         {
@@ -27,23 +34,38 @@ const router = (isAuthenticated: boolean, loading:boolean) => {
     },
     {
       path: "/dashboard",
-      element: <ProtectRoutes navigateTo="/login" allowed={isAuthenticated} loading={loading}/>,
+      element: (
+        <ProtectRoutes
+          navigateTo="/login"
+          allowed={isAuthenticated}
+          loading={loading}
+        />
+      ),
       children: [
         {
           path: "/dashboard",
           element: <DashboardLayout />,
           children: [
             {
-              path: "/dashboard/",
+              path: "",
               element: <div>dashboard page</div>,
             },
             {
-              path: "/dashboard/accounts",
-              element: <Accounts/>,
+              path: "accounts",
+              element: <Accounts />,
             },
             {
-              path: "/dashboard/data",
-              element: <div>data</div>,
+              path: "transfers",
+              element: <Transfers />,
+            },
+            {
+              path: "data",
+              children:[
+                {
+                  path: ":accountId",
+                  element: <Data/>,
+                },
+              ]
             },
           ],
         },
@@ -53,11 +75,14 @@ const router = (isAuthenticated: boolean, loading:boolean) => {
 };
 
 function App() {
-  const {isAuthenticated, loading} = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   return (
     <div className="w-full h-full">
-      <RouterProvider router={router(isAuthenticated || false, loading || false)} />
+      <RouterProvider
+        router={router(isAuthenticated || false, loading || false)}
+      />
+      <Toaster position="top-right" reverseOrder={false} />
     </div>
   );
 }

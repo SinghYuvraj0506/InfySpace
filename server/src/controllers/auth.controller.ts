@@ -18,7 +18,7 @@ export const authGoogle = asyncHandler((req: Request, res: Response) => {
 
 export const authDriveGoogle = asyncHandler((req: Request, res: Response) => {
   const { userId } = req.query;
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI2}&response_type=code&scope=https://www.googleapis.com/auth/drive profile email&state=${userId}`;
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI2}&response_type=code&access_type=offline&scope=https://www.googleapis.com/auth/drive profile email&state=${userId}`;
   return res.redirect(url);
 });
 

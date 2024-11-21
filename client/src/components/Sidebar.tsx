@@ -12,8 +12,8 @@ const SidebarOptions = [
         path:"/dashboard/accounts"
     },
     {
-        name:"Data",
-        path:"/dashboard/data"
+        name:"Transfers",
+        path:"/dashboard/transfers"
     },
 ]
 

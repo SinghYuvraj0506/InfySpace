@@ -1,23 +1,25 @@
 import {
   createContext,
-  ReactNode,
   useContext,
   useEffect,
   useState,
 } from "react";
-import { ProviderProps } from "../utils/types";
+import { Accounts, ProviderProps, User } from "../utils/types";
 import axiosInstance from "../utils/axiosConfig";
-import { useNavigate } from "react-router-dom";
+
+interface UserInterface extends User {
+  Accounts: Accounts[]
+}
 
 type AuthContentProps = {
-  user: any;
+  user: UserInterface | null;
   loading: boolean;
   isAuthenticated: boolean;
   logout?: () => Promise<void>;
 };
 
 const authContent = createContext<AuthContentProps>({
-  user: {},
+  user: null,
   loading: false,
   isAuthenticated: false,
 });
@@ -28,7 +30,7 @@ export const useAuth = () => {
 
 const AuthProvider: React.FC<ProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState();
+  const [user, setUser] = useState<UserInterface | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const getUser = async () => {

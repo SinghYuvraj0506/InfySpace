@@ -14,10 +14,12 @@ model User {
   name   String?
   avatar String?
 
-  created_at DateTime   @default(now())
-  updated_at DateTime   @default(now()) @updatedAt
-  
-  Accounts   Accounts[]
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  Accounts Accounts[]
+  Transfers Transfers[]
+  FileTransfers FileTransfer[]
 
   @@map("users")
 }
@@ -33,6 +35,9 @@ model Accounts {
   priority       Int?
   provider       AccountProviders
 
+  transfersTo   Transfers[] @relation("FromTransfers")
+  transfersFrom Transfers[] @relation("ToTransfers")
+
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
@@ -40,8 +45,53 @@ model Accounts {
   updated_at DateTime @default(now()) @updatedAt
 
   @@unique([provider, accountEmail])
-
   @@map("accounts")
+}
+
+model Transfers {
+  id       String @id @default(uuid())
+  progress Int    @default(0)
+
+  files FileTransfer[]
+  transferSize String  @default("0")
+
+  fromAccountId String
+  fromAccount   Accounts @relation("FromTransfers", fields: [fromAccountId], references: [id])
+
+  toAccountId String
+  toAccount   Accounts @relation("ToTransfers", fields: [toAccountId], references: [id])
+
+  userId  String
+  User  User  @relation(fields: [userId], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@map("transfers")
+}
+
+
+model FileTransfer {
+  id       String @id @default(uuid())
+  name     String
+  mimeType String
+  
+  initalId   String
+  finalId     String?
+  progress Int    @default(0)
+
+  size String   @default("0")
+
+  transferId   String
+  Transfer    Transfers @relation(fields: [transferId], references: [id])
+
+  userId  String
+  User  User  @relation(fields: [userId], references: [id])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@map("fileTransfer")
 }
 
 enum AccountProviders {
