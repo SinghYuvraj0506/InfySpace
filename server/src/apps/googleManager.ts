@@ -8,7 +8,7 @@ class GoogleManager {
     private static client_id: string = process.env.GOOGLE_CLIENT_ID as string;
     private static client_secret: string = process.env.GOOGLE_CLIENT_SECRET as string;
 
-    constructor(private refresh_token: string,private access_token: string) {
+    constructor(private refresh_token: string) {
         this.refresh_token = refresh_token;
         this.googleClient = this.connectToGoogle();
 
@@ -21,17 +21,14 @@ class GoogleManager {
 
     private connectToGoogle(): OAuth2Client | null {
         try {
-            if (!GoogleManager.client_id || !GoogleManager.client_secret || !this.refresh_token || !this.access_token) {
+            if (!GoogleManager.client_id || !GoogleManager.client_secret || !this.refresh_token) {
                 throw new Error("Missing Google OAuth2 credentials or refresh token.");
             }
-
             const client = new google.auth.OAuth2(
                 GoogleManager.client_id,
                 GoogleManager.client_secret
             );
-
-            client.credentials = { refresh_token: this.refresh_token, access_token: this.access_token}
-            client.refreshAccessToken()
+            client.setCredentials({ refresh_token: this.refresh_token})
             return client;
         } catch (error) {
             console.error("Error connecting to Google:", error);

@@ -5,81 +5,115 @@ import prisma from "../utils/db";
 import { ApiError } from "../utils/ApiError";
 import { getJWTFromPayload } from "../utils/jwt";
 import { ApiResponse } from "../utils/ApiResponse";
+import { google } from "googleapis";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 const REDIRECT_URI2 = process.env.REDIRECT_URI2;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
+const oauth2ClientDrive = new google.auth.OAuth2(
+  CLIENT_ID,
+  CLIENT_SECRET,
+  REDIRECT_URI2
+);
+
+const oauth2ClientLogin = new google.auth.OAuth2(
+  CLIENT_ID,
+  CLIENT_SECRET,
+  REDIRECT_URI
+);
+
 export const authGoogle = asyncHandler((req: Request, res: Response) => {
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=profile email`;
-  return res.redirect(url);
+  const scopes = [
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+  ];
+
+  const authorizationUrl = oauth2ClientLogin.generateAuthUrl({
+    access_type: "online",
+    scope: scopes,
+  });
+
+  return res.redirect(authorizationUrl);
 });
 
 export const authDriveGoogle = asyncHandler((req: Request, res: Response) => {
   const { userId } = req.query;
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI2}&response_type=code&access_type=offline&scope=https://www.googleapis.com/auth/drive profile email&state=${userId}`;
-  return res.redirect(url);
+  const scopes = [
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+  ];
+
+  const authorizationUrl = oauth2ClientDrive.generateAuthUrl({
+    access_type: "offline", // gives me refresh token to use it later
+    scope: scopes,
+    state: userId as string, // returns the userid in the callback
+    prompt: "consent",
+  });
+
+  return res.redirect(authorizationUrl);
 });
 
 export const googleCallback = asyncHandler(
   async (req: Request, res: Response) => {
     const { code } = req.query;
 
-    const { data } = await axios.post("https://oauth2.googleapis.com/token", {
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      code,
-      redirect_uri: REDIRECT_URI,
-      grant_type: "authorization_code",
-    });
-
-    const { access_token, id_token } = data;
-
-    const { data: profile } = await axios.get(
-      "https://www.googleapis.com/oauth2/v1/userinfo",
-      {
-        headers: { Authorization: `Bearer ${access_token}` },
+    try {
+      if (!code) {
+        throw new ApiError(401, "Code not found, Some Error Occured");
       }
-    );
 
-    let accounts = await prisma.accounts.findFirst({
-      where: { accountEmail: profile?.email, provider: "Google" },
-    });
+      let { tokens } = await oauth2ClientDrive.getToken(code as string);
 
-    if (accounts) {
-      throw new ApiError(400, "Account already linked");
+      const { data: profile } = await axios.get(
+        "https://www.googleapis.com/oauth2/v1/userinfo",
+        {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        }
+      );
+
+      let accounts = await prisma.accounts.findFirst({
+        where: { accountEmail: profile?.email, provider: "Google" },
+      });
+
+      if (accounts) {
+        throw new ApiError(400, "Account already linked");
+      }
+
+      const user = await prisma.user.upsert({
+        where: { email: profile?.email },
+        create: {
+          email: profile?.email,
+          name: profile?.name,
+          avatar: profile?.picture,
+        },
+        update: {
+          name: profile?.name,
+          avatar: profile?.picture,
+        },
+      });
+
+      const jwt = getJWTFromPayload({
+        id: user?.id,
+        name: user?.name,
+        email: user?.email,
+      });
+
+      if (!jwt) {
+        throw new ApiError(400, "Could not login");
+      }
+
+      res.cookie("infy-space-token", jwt.token, {
+        maxAge: jwt?.expiry,
+        httpOnly: true,
+      });
+
+      res.redirect(`${process.env.ClIENT_URI}/dashboard`);
+    } catch (error) {
+      res.redirect(`${process.env.ClIENT_URI}`);
     }
-
-    const user = await prisma.user.upsert({
-      where: { email: profile?.email },
-      create: {
-        email: profile?.email,
-        name: profile?.name,
-        avatar: profile?.picture,
-      },
-      update: {
-        name: profile?.name,
-        avatar: profile?.picture,
-      },
-    });
-
-    const jwt = getJWTFromPayload({
-      id: user?.id,
-      name: user?.name,
-      email: user?.email,
-    });
-
-    if (!jwt) {
-      throw new ApiError(400, "Could not login");
-    }
-
-    res.cookie("infy-space-token", jwt.token, {
-      maxAge: jwt?.expiry,
-      httpOnly: true,
-    });
-
-    res.redirect(`${process.env.ClIENT_URI}/dashboard`);
   }
 );
 
@@ -88,24 +122,16 @@ export const googleDriveCallback = asyncHandler(
     const { code, state } = req.query;
 
     try {
-      if (!state) {
-        throw new ApiError(401, "User not found, Some Error Occured");
+      if (!state || !code) {
+        throw new ApiError(401, "User/Code not found, Some Error Occured");
       }
 
-      const { data } = await axios.post("https://oauth2.googleapis.com/token", {
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        code,
-        redirect_uri: REDIRECT_URI2,
-        grant_type: "authorization_code",
-      });
-
-      const { access_token, id_token } = data;
+      let { tokens } = await oauth2ClientDrive.getToken(code as string);
 
       const { data: profile } = await axios.get(
         "https://www.googleapis.com/oauth2/v1/userinfo",
         {
-          headers: { Authorization: `Bearer ${access_token}` },
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
         }
       );
 
@@ -119,8 +145,9 @@ export const googleDriveCallback = asyncHandler(
 
       await prisma.accounts.create({
         data: {
-          accessToken: access_token,
-          refreshToken: code as string,
+          accessToken: tokens?.access_token,
+          refreshToken: tokens?.refresh_token as string,
+          tokenExpiresAt: new Date(tokens?.expiry_date as number),
           avatar: profile?.picture,
           accountEmail: profile?.email,
           provider: "Google",
@@ -128,16 +155,24 @@ export const googleDriveCallback = asyncHandler(
         },
       });
 
-      res.redirect(`${process.env.ClIENT_URI}/dashboard/accounts?success=${"Account Linked Successfully"}`);
-    } catch (error:any) {
-      res.redirect(`${process.env.ClIENT_URI}/dashboard/accounts?error=${error?.message || "Something Went Wrong"}`);
+      res.redirect(
+        `${
+          process.env.ClIENT_URI
+        }/dashboard/accounts?success=${"Account Linked Successfully"}`
+      );
+    } catch (error: any) {
+      res.redirect(
+        `${process.env.ClIENT_URI}/dashboard/accounts?error=${
+          error?.message || "Something Went Wrong"
+        }`
+      );
     }
   }
 );
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
   res.clearCookie("infy-space-token");
-  return res
+  res
     .status(200)
     .json(new ApiResponse(200, {}, "Logged Out Successfully"));
 });

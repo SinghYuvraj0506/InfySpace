@@ -29,7 +29,7 @@ model Accounts {
   accountEmail String
   avatar       String?
 
-  accessToken    String
+  accessToken   String?
   refreshToken   String
   tokenExpiresAt DateTime?
   priority       Int?
