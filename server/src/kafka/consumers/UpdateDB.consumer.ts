@@ -5,10 +5,13 @@ import {
   KAFKA_TOPICS,
   UPDATE_DB_KEYS,
 } from "../../utils/constants";
+import moment from "moment";
 
 const UpdateDBConsumer: EachMessageHandler = async ({ message }) => {
   try {
     const keyName = message?.key?.toString();
+
+    console.log("message_key",keyName)
 
     switch (keyName) {
       case UPDATE_DB_KEYS.UPDATE_UPLOAD_URI:
@@ -27,6 +30,7 @@ const UpdateDBConsumer: EachMessageHandler = async ({ message }) => {
         break;
     }
   } catch (error) {
+    console.log(error)
     console.log(
       `Error occured in topic: ${KAFKA_TOPICS.UPDATE_DB} ----------------`
     );
@@ -42,7 +46,7 @@ const UpdateUploadURI = async ({ message }: { message: KafkaMessage }) => {
   }: {
     fileTransferId: string;
     uri: string;
-    expiry: string;
+    expiry: number;
   } = JSON.parse(message.value?.toString() ?? "");
 
   if (!fileTransferId || !uri || !expiry) {
@@ -55,7 +59,7 @@ const UpdateUploadURI = async ({ message }: { message: KafkaMessage }) => {
     },
     data: {
       uploadUri: uri,
-      expiry: expiry,
+      expiry: moment(expiry).toDate(),
     },
   });
 
@@ -90,12 +94,11 @@ const UpdateFinalId = async ({ message }: { message: KafkaMessage }) => {
 
 // update the file progess in db ---------------
 const UpdateFileProgress = async ({ message }: { message: KafkaMessage }) => {
-  const progressKey = message.key?.toString();
-
   const {
-    value,fileTransferId
+    type,value,fileTransferId
   }: {
-    value: number | string;
+    type:string;
+    value: string;
     fileTransferId: string
   } = JSON.parse(message.value?.toString() ?? "");
 
@@ -103,16 +106,17 @@ const UpdateFileProgress = async ({ message }: { message: KafkaMessage }) => {
     throw new Error("Insuffiecent Params in UpdateUploadProgress Consumer function");
   }
 
-  switch (progressKey) {
+  switch (type) {
     case FILE_PROGRESS_TYPES.COPYING_PROGRESS:
       await prisma.fileTransfer.update({
         where:{
           id: fileTransferId
         },
         data:{
-          completion_progress: value as number
+          completion_progress: parseInt(value)
         }
       });
+      break;
 
     case FILE_PROGRESS_TYPES.VERIFICATION_PROGRESS:
       await prisma.fileTransfer.update({

@@ -44,7 +44,7 @@ const generateResumableUploadUri = async ({
         value: JSON.stringify({
           fileTransferId: fileTransferId,
           uri: resumableUri,
-          expiry: moment().add(7, "day").date(),
+          expiry: moment(new Date()).add(7, 'days').toDate()
         }),
       },
     });
@@ -63,56 +63,85 @@ const updateFileChuncks = async ({
   fileTransferId,
   uploadUri,
   sourceStream,
-  fileSize
 }: {
   googleClient: GoogleManager;
   file: DriveFileType;
   fileTransferId: string;
   uploadUri: string;
   sourceStream: any;
-  fileSize: number
 }) => {
   try {
     let startByte = 0;
+    let byteFactor = 256 * 1024 * 10; // 2.5mb
+    let previousBuffer = Buffer.alloc(0);
 
     for await (const chunk of sourceStream) {
+      console.log(
+        `Startbyte - ${startByte}, Buffer size: ${previousBuffer?.length} , Chunk Size: ${chunk?.length}`
+      );
+      // check for basic size --------------
+      previousBuffer = Buffer.concat([previousBuffer, chunk]);
+
+      if (previousBuffer.length < byteFactor) {
+        continue;
+      }
+
+      const offset = previousBuffer?.length % byteFactor;
+      const finalBuffer = previousBuffer?.slice(
+        0,
+        previousBuffer?.length - offset
+      );
+
       const res = await googleClient.uploadChuncksOnUri(
         startByte,
         file?.size,
-        chunk,
+        finalBuffer,
         uploadUri
       );
 
-      // update final id in db and also progress ----------------------
-      if (res) {
-        await produceMessage({
-          topic: KAFKA_TOPICS.UPDATE_DB,
-          message: {
-            key: UPDATE_DB_KEYS.UPDATE_FINAL_FILE_ID,
-            value: JSON.stringify({
-              fileTransferId: fileTransferId,
-              id: res.id,
-            }),
-          },
-        });
-      }
-
-      startByte += chunk.length;
+      startByte += finalBuffer.length;
+      previousBuffer = previousBuffer?.slice(previousBuffer?.length - offset);
 
       //  update the progresss -----------------------------------------
       await produceMessage({
         topic: KAFKA_TOPICS.UPDATE_DB,
         message: {
-          key: FILE_PROGRESS_TYPES.COPYING_PROGRESS,
+          key: UPDATE_DB_KEYS.UPDATE_FILE_PROGRESS,
           value: JSON.stringify({
+            type: FILE_PROGRESS_TYPES.COPYING_PROGRESS,
             fileTransferId: fileTransferId,
-            value: ((startByte/fileSize) * 100).toFixed(0),
+            value: ((startByte / file?.size) * 100).toFixed(0),
           }),
         },
       });
 
       console.log(`Uploaded chunk: ${startByte}/${file?.size}`);
     }
+
+    // deploy last chunk -------
+    if (previousBuffer?.length > 0) {
+      const res = await googleClient.uploadChuncksOnUri(
+        startByte,
+        file?.size,
+        previousBuffer,
+        uploadUri
+      );
+
+      // update final id in db and also progress ----------------------
+      if (res?.id) {
+        await produceMessage({
+          topic: KAFKA_TOPICS.UPDATE_DB,
+          message: {
+            key: UPDATE_DB_KEYS.UPDATE_FINAL_FILE_ID,
+            value: JSON.stringify({
+              fileTransferId: fileTransferId,
+              id: res?.id,
+            }),
+          },
+        });
+      }
+    }
+
   } catch (error) {
     throw new Error(`error -> APPS>HELPERS>UPDATEFILECHUNCKS: ${file?.name}`);
   }
@@ -147,7 +176,7 @@ export const driveFileTransfer = async ({
       file,
       fileTransferId,
       sourceStream: sourceStream?.data,
-      uploadUri: resumableUri,
+      uploadUri: resumableUri
     });
   } catch (error) {
     console.log("error -> APPS>HELPERS>DRIVEFILETRANSFER :::----:::", error);

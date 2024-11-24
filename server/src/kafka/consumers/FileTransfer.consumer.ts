@@ -1,5 +1,5 @@
 import { EachMessageHandler } from "kafkajs";
-import { FILE_PROGRESS_TYPES, KAFKA_TOPICS } from "../../utils/constants";
+import { FILE_PROGRESS_TYPES, KAFKA_TOPICS, UPDATE_DB_KEYS } from "../../utils/constants";
 import { driveFileTransfer } from "../../apps/helpers/google.helper";
 import { DriveFileType, tranferWithAccountsType } from "../../types/custom";
 import { produceMessage } from "../kafka.helper";
@@ -10,17 +10,19 @@ const FileTranferConsumer: EachMessageHandler = async ({ topic, message }) => {
       file,
       transfer,
       resumableUri,
+      fileTransferId
     }: {
       file: DriveFileType;
       transfer: tranferWithAccountsType;
       resumableUri: string | null;
+      fileTransferId:string
     } = JSON.parse(message.value?.toString() ?? "");
 
     await driveFileTransfer({
       refreshTokenRecieverAccount: transfer?.toAccount?.refreshToken as string,
       refreshTokenSenderAccount: transfer?.fromAccount?.refreshToken as string,
       file,
-      fileTransferId: transfer?.id,
+      fileTransferId: fileTransferId,
       resumableUri: resumableUri ?? undefined,
     });
 
@@ -30,22 +32,23 @@ const FileTranferConsumer: EachMessageHandler = async ({ topic, message }) => {
     await produceMessage({
       topic: KAFKA_TOPICS.UPDATE_DB,
       message: {
-        key: FILE_PROGRESS_TYPES.COPYING_PROGRESS,
+        key: UPDATE_DB_KEYS.UPDATE_FILE_PROGRESS,
         value: JSON.stringify({
-          fileTransferId: transfer?.id,
+          type:FILE_PROGRESS_TYPES.COPYING_PROGRESS,
+          fileTransferId: fileTransferId,
           value:100
         })
       },
     });
 
     //  go for file verification ------------------
-    await produceMessage({
-      topic: KAFKA_TOPICS.VERIFY_FILE,
-      message: {
-        key: "verify_files",
-        value: message.value,
-      },
-    });
+    // await produceMessage({
+    //   topic: KAFKA_TOPICS.VERIFY_FILE,
+    //   message: {
+    //     key: "verify_files",
+    //     value: message.value,
+    //   },
+    // });
   } catch (error) {
     console.log(
       `Error occured in topic: ${KAFKA_TOPICS.FILE_TRANSFER}----------------`

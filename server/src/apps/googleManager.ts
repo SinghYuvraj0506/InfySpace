@@ -57,11 +57,25 @@ class GoogleManager {
           "Content-Type": "application/json",
           ...headers,
         },
+        validateStatus: (status) => {
+          // Treat 308 as a valid response
+          return (status >= 200 && status < 300) || status === 308;
+        },
       });
 
       return res;
-    } catch (error) {
-      console.log("Could not request axios", error);
+    } catch (error: any) {
+      if (error.response) {
+        console.log(error.response.data);
+        console.log(error.response.status);
+        console.log(error.response.headers);
+      } else if (error.request) {
+        console.log(error.request);
+      } else {
+        console.log("Error", error.message);
+      }
+      console.log(error.config);
+      console.log("Could not request axios");
       throw new Error("Error Request");
     }
   };
@@ -156,12 +170,12 @@ class GoogleManager {
     uploadURI: string
   ) {
     try {
-      const endByte = startByte + chunk?.length - 1;
+      const endByte = startByte + chunk.length - 1;
       const headers = {
         "Content-Range": `bytes ${startByte}-${endByte}/${totalSize}`,
         "Content-Type": "application/octet-stream",
       };
-
+      
       console.log(`Sending bytes ${startByte}-${endByte}/${totalSize}`);
       const res = await this.requestGoogle("put", uploadURI, chunk, headers);
       return res?.data;

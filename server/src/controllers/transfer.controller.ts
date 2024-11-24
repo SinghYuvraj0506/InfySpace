@@ -37,6 +37,7 @@ export const transferFileToOtherDrive = asyncHandler(
       include: {
         fromAccount: true,
         toAccount: true,
+        files:true
       },
     });
 
@@ -47,8 +48,12 @@ export const transferFileToOtherDrive = asyncHandler(
         message: {
           key: "start_transfer",
           value: JSON.stringify({
-            file: eachfile,
+            file: {
+              ...eachfile,
+              size: parseInt(eachfile?.size)
+            },
             transfer: transfer,
+            fileTransferId: transfer?.files?.find((e)=>e?.initalId === eachfile?.id)?.id,
             resumableUri: null
           }),
         },
