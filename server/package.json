@@ -29,6 +29,7 @@
     "express": "^4.21.0",
     "googleapis": "105",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "moment": "^2.30.1",
     "zod": "^3.23.8"
   }

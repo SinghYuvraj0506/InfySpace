@@ -78,7 +78,12 @@ model FileTransfer {
   
   initalId   String
   finalId     String?
-  progress Int    @default(0)
+  completion_progress Int    @default(0)
+  verfication_status FileVerificationStatus    @default(PENDING)
+  deletion_status FileVerificationStatus    @default(PENDING)
+
+  uploadUri   String?
+  expiry      DateTime?
 
   size String   @default("0")
 
@@ -96,4 +101,10 @@ model FileTransfer {
 
 enum AccountProviders {
   Google
+}
+
+enum FileVerificationStatus {
+  PENDING
+  FAILED
+  SUCCESS
 }

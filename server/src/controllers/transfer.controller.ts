@@ -4,10 +4,8 @@ import prisma from "../utils/db";
 import { ApiResponse } from "../utils/ApiResponse";
 import { z } from "zod";
 import { createTransferSchema } from "../schema/transfer.schema";
-import GoogleManager from "../apps/googleManager";
-import { pipeline } from "node:stream";
-import fs from "fs";
-import { ApiError } from "../utils/ApiError";
+import { produceMessage } from "../kafka/kafka.helper";
+import { KAFKA_TOPICS } from "../utils/constants";
 
 export const transferFileToOtherDrive = asyncHandler(
   async (req: Request, res: Response) => {
@@ -36,44 +34,26 @@ export const transferFileToOtherDrive = asyncHandler(
           ?.reduce((acc, curr) => (acc += parseInt(curr.size.toString())), 0)
           .toString(),
       },
-      include:{
-        fromAccount:true,
-        toAccount:true
-      }
+      include: {
+        fromAccount: true,
+        toAccount: true,
+      },
     });
 
-    const googleClientFrom = new GoogleManager(transfer.fromAccount?.refreshToken as string);
-    const googleClientTo = new GoogleManager(transfer.toAccount?.refreshToken as string);
-    const sourceStream = await googleClientFrom.getFileReadableStream(
-      files[0]?.id,
-      files[0]?.name
-    );
-
-    const resumableUri = await googleClientTo.getResumableUploadUri(
-      files[0]?.name,
-      parseInt(files[0]?.size),
-      files[0]?.mimeType
-    );
-
-    if (!resumableUri) {
-      throw new ApiError(400, "Invalid resumableUri");
+    // produce the messafe to the file transfer topic ----------------
+    for (let eachfile of files) {
+      await produceMessage({
+        topic: KAFKA_TOPICS.FILE_TRANSFER,
+        message: {
+          key: "start_transfer",
+          value: JSON.stringify({
+            file: eachfile,
+            transfer: transfer,
+            resumableUri: null
+          }),
+        },
+      });
     }
-
-    let startByte = 0;
-
-    for await (const chunk of sourceStream.data) {
-      const res = await googleClientTo.uploadChuncksOnUri(
-        startByte,
-        parseInt(files[0]?.size),
-        chunk,
-        resumableUri
-      );
-      console.log("response",res)
-      startByte += chunk.length;
-      console.log(`Uploaded chunk: ${startByte}/${files[0]?.size}`);
-    }
-
-    console.log("File transfer completed!");
 
     res
       .status(200)
