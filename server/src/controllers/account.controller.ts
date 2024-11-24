@@ -18,7 +18,7 @@ export const getFilesFromAccountId = asyncHandler(
       throw new ApiError(400,"Invalid Account")
     }
 
-    const googleClient = new GoogleManager(account?.refreshToken, account.accessToken)
+    const googleClient = new GoogleManager(account?.refreshToken)
     const files = await googleClient.listDriveFiles()
 
     res
