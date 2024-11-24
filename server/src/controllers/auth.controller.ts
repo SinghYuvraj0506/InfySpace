@@ -65,7 +65,7 @@ export const googleCallback = asyncHandler(
         throw new ApiError(401, "Code not found, Some Error Occured");
       }
 
-      let { tokens } = await oauth2ClientDrive.getToken(code as string);
+      let { tokens } = await oauth2ClientLogin.getToken(code as string);
 
       const { data: profile } = await axios.get(
         "https://www.googleapis.com/oauth2/v1/userinfo",
@@ -112,6 +112,7 @@ export const googleCallback = asyncHandler(
 
       res.redirect(`${process.env.ClIENT_URI}/dashboard`);
     } catch (error) {
+      console.log(error)
       res.redirect(`${process.env.ClIENT_URI}`);
     }
   }

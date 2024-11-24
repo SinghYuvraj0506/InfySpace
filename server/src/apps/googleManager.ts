@@ -88,7 +88,7 @@ class GoogleManager {
     try {
       const res = await this.drive.files.list({
         pageSize: 20,
-        fields: "nextPageToken, files(id, name, mimeType, thumbnailLink, size)",
+        fields: "nextPageToken, files(id, name, mimeType, thumbnailLink, size, md5Checksum, sha256Checksum)",
       });
 
       const files = res.data.files;

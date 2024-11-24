@@ -9,6 +9,7 @@ import Accounts from "./pages/Dashboard/Accounts";
 import { Toaster } from "react-hot-toast";
 import Data from "./pages/Dashboard/Data";
 import Transfers from "./pages/Dashboard/Transfers";
+import Dashboard from "./pages/Dashboard/Index";
 
 const router = (isAuthenticated: boolean, loading: boolean) => {
   return createBrowserRouter([
@@ -48,7 +49,7 @@ const router = (isAuthenticated: boolean, loading: boolean) => {
           children: [
             {
               path: "",
-              element: <div>dashboard page</div>,
+              element: <Dashboard/>,
             },
             {
               path: "accounts",

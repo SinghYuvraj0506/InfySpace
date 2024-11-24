@@ -2,18 +2,21 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axiosInstance from "../../utils/axiosConfig";
 import { Files } from "../../utils/types";
-import { getFileSize } from "../../utils/helper";
+import { getFileSize, getFileTypeChip } from "../../utils/helper";
 import DialogWrapper from "../../components/hoc/DialogWrapper";
 import AccountSelectDialog from "../../components/dialogs/AccountSelectDialog";
+import Loader from "../../components/globals/Loader";
 
 const Data = () => {
   const { accountId } = useParams();
 
   const [filesData, setFilesData] = useState<Files[]>([]);
   const [isDialogOpen, setDialogOpen] = useState(false);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState<boolean>(false);
 
   const getFiles = async () => {
+    setLoading(true)
     try {
       const res = await axiosInstance.get(
         `/accounts/getDriveFiles/${accountId}`
@@ -23,19 +26,34 @@ const Data = () => {
       }
     } catch (error) {
       console.log("Error in fetching user", error);
+    }finally{
+      setLoading(false)
     }
   };
 
   const [selectedFiles, setSelectedFiles] = useState<
-    { id: string; size: number, mimeType: string, name:string }[]
+    { id: string; size: number; mimeType: string; name: string }[]
   >([]);
 
   // Handle checkbox selection
-  const handleCheckboxChange = (fileId: string, fileSize: number, mimeType:string, fileName:string) => {
+  const handleCheckboxChange = (
+    fileId: string,
+    fileSize: number,
+    mimeType: string,
+    fileName: string
+  ) => {
     setSelectedFiles((prevSelected) =>
       prevSelected?.map((e) => e?.id).includes(fileId)
         ? prevSelected.filter((file) => file?.id !== fileId)
-        : [...prevSelected, { id: fileId, size: parseInt(fileSize.toString()), mimeType, name:fileName }]
+        : [
+            ...prevSelected,
+            {
+              id: fileId,
+              size: parseInt(fileSize.toString()),
+              mimeType,
+              name: fileName,
+            },
+          ]
     );
   };
 
@@ -53,20 +71,26 @@ const Data = () => {
       const res = await axiosInstance.post(`/transfers/initialize`, {
         fromAccountId: accountId,
         toAccountId: currentAccountId,
-        files: selectedFiles?.map((file)=>({
+        files: selectedFiles?.map((file) => ({
           ...file,
-          size: file?.size.toString()
+          size: file?.size.toString(),
         })),
       });
       if (res?.data?.success) {
         setFilesData(res?.data?.data);
         closeDialog();
-        navigate("/dashboard/transfers")
+        navigate("/dashboard/transfers");
       }
     } catch (error) {
       console.log("Error in fetching user", error);
     }
   };
+
+
+  if (loading) {
+    return <Loader />;
+  }
+
 
   return (
     <>
@@ -112,7 +136,14 @@ const Data = () => {
                 <input
                   type="checkbox"
                   checked={selectedFiles?.map((e) => e?.id).includes(file?.id)}
-                  onChange={() => handleCheckboxChange(file?.id, file?.size, file?.mimeType, file?.name)}
+                  onChange={() =>
+                    handleCheckboxChange(
+                      file?.id,
+                      file?.size,
+                      file?.mimeType,
+                      file?.name
+                    )
+                  }
                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
               </div>
@@ -124,6 +155,10 @@ const Data = () => {
                     src={file?.thumbnailLink}
                     alt={file?.name}
                     className="h-full object-cover w-full"
+                    onError={(e) => {
+                      e.target.src =
+                        "https://static.vecteezy.com/system/resources/thumbnails/004/141/669/small/no-photo-or-blank-image-icon-loading-images-or-missing-image-mark-image-not-available-or-image-coming-soon-sign-simple-nature-silhouette-in-frame-isolated-illustration-vector.jpg";
+                    }}
                   />
                 ) : (
                   <span className="text-gray-500 text-sm">No Thumbnail</span>
@@ -135,7 +170,13 @@ const Data = () => {
                 <span className="text-sm font-medium text-gray-700 truncate">
                   {file?.name}
                 </span>
-                <span className="text-xs text-gray-500">{file?.mimeType}</span>
+                {/* File Type Chips */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                    {getFileTypeChip(file?.mimeType)}
+                  </span>
+                </div>
+                {/* <span className="text-xs text-gray-500">{file?.mimeType}</span> */}
                 {file?.size && (
                   <span className="text-xs text-gray-500">
                     Size: {getFileSize(file?.size)}

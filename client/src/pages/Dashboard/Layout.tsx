@@ -6,7 +6,7 @@ const Index = () => {
     <div className="w-screen h-screen flex items-start overflow-hidden">
       <Sidebar />
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto h-full">
         <Outlet />
       </div>
     </div>
