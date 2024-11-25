@@ -21,6 +21,8 @@ const FileTranferConsumer: EachMessageHandler = async ({ topic, message }) => {
     await driveFileTransfer({
       refreshTokenRecieverAccount: transfer?.toAccount?.refreshToken as string,
       refreshTokenSenderAccount: transfer?.fromAccount?.refreshToken as string,
+      senderEmail: transfer?.fromAccount?.accountEmail as string,
+      recieverEmail: transfer?.toAccount?.accountEmail as string,
       file,
       fileTransferId: fileTransferId,
       resumableUri: resumableUri ?? undefined,

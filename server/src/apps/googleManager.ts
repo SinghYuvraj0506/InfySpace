@@ -11,8 +11,9 @@ class GoogleManager {
   private static client_secret: string = process.env
     .GOOGLE_CLIENT_SECRET as string;
 
-  constructor(private refresh_token: string) {
+  constructor(private refresh_token: string, private email: string) {
     this.refresh_token = refresh_token;
+    this.email = email;
     this.googleClient = this.connectToGoogle();
 
     if (this.googleClient) {
@@ -85,10 +86,13 @@ class GoogleManager {
       throw new Error("Google Drive client is not initialized.");
     }
 
+    const query = `mimeType != 'application/vnd.google-apps.folder' and mimeType != 'application/vnd.google-apps.shortcut' and trashed != true and '${this.email}' in owners` ;
+
     try {
       const res = await this.drive.files.list({
+        q: query,
         pageSize: 20,
-        fields: "nextPageToken, files(id, name, mimeType, thumbnailLink, size, md5Checksum, sha256Checksum)",
+        fields: "nextPageToken, files(id, name, mimeType, thumbnailLink, size, md5Checksum, sha256Checksum, capabilities)",
       });
 
       const files = res.data.files;
@@ -114,7 +118,7 @@ class GoogleManager {
       const file = await this.drive.files.get(
         {
           fileId: fileId,
-          fields:'id, name, mimeType, thumbnailLink, size, md5Checksum, sha256Checksum, sha1Checksum'
+          fields:'id, name, mimeType, thumbnailLink, size, md5Checksum, sha256Checksum, sha1Checksum, trashed'
         }
       );
 
@@ -182,6 +186,32 @@ class GoogleManager {
     } catch (error) {
       console.error("Error in getting resumable uri's", error);
       throw new Error("Error in Uploading files:");
+    }
+  }
+
+  public async trashFileById(fileId: string) {
+    if (!this.drive) {
+      throw new Error("Google Drive client is not initialized.");
+    }
+
+    try {
+      const file = await this.drive.files.update(
+        {
+          fileId: fileId,
+          requestBody:{
+            'trashed': true
+          }
+        }
+      );
+
+      if (!file) {
+        throw new Error("No File Found");
+      }
+
+      return file;
+    } catch (error) {
+      console.error("Error Trashing the Drive files:", error);
+      throw new Error("Error Trashing the Drive files");
     }
   }
 

@@ -12,6 +12,8 @@ import prisma from "../../utils/db";
 interface driveFileTransferInterface {
   refreshTokenSenderAccount: string;
   refreshTokenRecieverAccount: string;
+  senderEmail:string,
+  recieverEmail:string,
   file: DriveFileType;
   fileTransferId: string;
   resumableUri?: string;
@@ -19,8 +21,15 @@ interface driveFileTransferInterface {
 interface verifyChecksumFileTransferInterface {
   refreshTokenSenderAccount: string;
   refreshTokenRecieverAccount: string;
+  senderEmail:string,
+  recieverEmail:string,
   initalId: string;
   finalId: string;
+}
+interface trashFileTransferInterface {
+  refreshTokenSenderAccount: string;
+  senderEmail:string,
+  initalId: string;
 }
 
 const generateResumableUploadUri = async ({
@@ -163,14 +172,16 @@ const updateFileChuncks = async ({
 
 export const driveFileTransfer = async ({
   refreshTokenRecieverAccount,
+  senderEmail,
+  recieverEmail,
   refreshTokenSenderAccount,
   file,
   fileTransferId,
   resumableUri,
 }: driveFileTransferInterface) => {
   try {
-    const senderGoogleClient = new GoogleManager(refreshTokenSenderAccount);
-    const recieverGoogleClient = new GoogleManager(refreshTokenRecieverAccount);
+    const senderGoogleClient = new GoogleManager(refreshTokenSenderAccount, senderEmail);
+    const recieverGoogleClient = new GoogleManager(refreshTokenRecieverAccount, recieverEmail);
 
     if (!resumableUri) {
       resumableUri = await generateResumableUploadUri({
@@ -249,6 +260,34 @@ export const comparesCheckSums = async ({
   } catch (error: any) {
     console.log(
       "error -> APPS>HELPERS>VERIFYCHECKSUMFILETRANSFER :::----:::",
+      error
+    );
+    throw new Error(error?.message);
+  }
+};
+
+
+export const trashFiles = async ({
+  refreshTokenSenderAccount,
+  senderEmail,
+  initalId,
+}: trashFileTransferInterface) => {
+  try {
+    const senderGoogleClient = new GoogleManager(refreshTokenSenderAccount,senderEmail);
+
+    const SourcefileData:any = await senderGoogleClient.trashFileById(initalId);
+    
+    const CheckSourcefileData:any = await senderGoogleClient.getDriveFileById(initalId);
+
+    console.log("CHeck Data:",CheckSourcefileData?.data)
+
+    if(!CheckSourcefileData.data.trashed){
+      throw new Error("File not deleted")
+    }
+
+  } catch (error: any) {
+    console.log(
+      "error -> APPS>HELPERS>TRASHFILES :::----:::",
       error
     );
     throw new Error(error?.message);

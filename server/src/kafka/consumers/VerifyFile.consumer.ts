@@ -29,6 +29,8 @@ const VerifyFileConsumer: EachMessageHandler = async ({ topic, message }) => {
     await comparesCheckSums({
       refreshTokenRecieverAccount: transfer?.toAccount?.refreshToken as string,
       refreshTokenSenderAccount: transfer?.fromAccount?.refreshToken as string,
+      senderEmail: transfer?.fromAccount?.accountEmail as string,
+      recieverEmail: transfer?.toAccount?.accountEmail as string,
       finalId: fileTransferData?.finalId,
       initalId: fileTransferData?.initalId
     })
@@ -47,13 +49,13 @@ const VerifyFileConsumer: EachMessageHandler = async ({ topic, message }) => {
     });
 
     //  go for file deletion ------------------
-    // await produceMessage({
-    //   topic: KAFKA_TOPICS.DELETE_SOURCE,
-    //   message: {
-    //     key: "delete_files",
-    //     value: message.value,
-    //   },
-    // });
+    await produceMessage({
+      topic: KAFKA_TOPICS.DELETE_SOURCE,
+      message: {
+        key: "delete_files",
+        value: message.value,
+      },
+    });
 
   } catch (error) {
     console.log(
@@ -65,7 +67,7 @@ const VerifyFileConsumer: EachMessageHandler = async ({ topic, message }) => {
       message: {
         key: UPDATE_DB_KEYS.UPDATE_FILE_PROGRESS,
         value: JSON.stringify({
-          key: FILE_PROGRESS_TYPES.VERIFICATION_PROGRESS,
+          type: FILE_PROGRESS_TYPES.VERIFICATION_PROGRESS,
           fileTransferId: fileTransferId,
           value:'FAILED'
         })
