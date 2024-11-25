@@ -42,13 +42,13 @@ const FileTranferConsumer: EachMessageHandler = async ({ topic, message }) => {
     });
 
     //  go for file verification ------------------
-    // await produceMessage({
-    //   topic: KAFKA_TOPICS.VERIFY_FILE,
-    //   message: {
-    //     key: "verify_files",
-    //     value: message.value,
-    //   },
-    // });
+    await produceMessage({
+      topic: KAFKA_TOPICS.VERIFY_FILE,
+      message: {
+        key: "verify_files",
+        value: message.value,
+      },
+    });
   } catch (error) {
     console.log(
       `Error occured in topic: ${KAFKA_TOPICS.FILE_TRANSFER}----------------`

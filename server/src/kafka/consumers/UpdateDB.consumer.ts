@@ -18,9 +18,10 @@ const UpdateDBConsumer: EachMessageHandler = async ({ message }) => {
         await UpdateUploadURI({ message });
         break;
 
-      case UPDATE_DB_KEYS.UPDATE_FINAL_FILE_ID:
-        await UpdateFinalId({ message });
-        break;
+        // it is a dependency on verify checksum and hence both this needs to be processed via a single topic and single partion
+      // case UPDATE_DB_KEYS.UPDATE_FINAL_FILE_ID:
+      //   await UpdateFinalId({ message });
+      //   break;
 
       case UPDATE_DB_KEYS.UPDATE_FILE_PROGRESS:
         await UpdateFileProgress({ message });
@@ -102,9 +103,11 @@ const UpdateFileProgress = async ({ message }: { message: KafkaMessage }) => {
     fileTransferId: string
   } = JSON.parse(message.value?.toString() ?? "");
 
-  if (!fileTransferId || !value) {
+  if (!fileTransferId || !value || !type) {
     throw new Error("Insuffiecent Params in UpdateUploadProgress Consumer function");
   }
+
+  console.log("file progress update type:", type)
 
   switch (type) {
     case FILE_PROGRESS_TYPES.COPYING_PROGRESS:

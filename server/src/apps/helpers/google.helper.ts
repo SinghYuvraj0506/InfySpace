@@ -7,6 +7,7 @@ import {
 } from "../../utils/constants";
 import GoogleManager from "../googleManager";
 import { DriveFileType } from "../../types/custom";
+import prisma from "../../utils/db";
 
 interface driveFileTransferInterface {
   refreshTokenSenderAccount: string;
@@ -14,6 +15,12 @@ interface driveFileTransferInterface {
   file: DriveFileType;
   fileTransferId: string;
   resumableUri?: string;
+}
+interface verifyChecksumFileTransferInterface {
+  refreshTokenSenderAccount: string;
+  refreshTokenRecieverAccount: string;
+  initalId: string;
+  finalId: string;
 }
 
 const generateResumableUploadUri = async ({
@@ -44,7 +51,7 @@ const generateResumableUploadUri = async ({
         value: JSON.stringify({
           fileTransferId: fileTransferId,
           uri: resumableUri,
-          expiry: moment(new Date()).add(7, 'days').toDate()
+          expiry: moment(new Date()).add(7, "days").toDate(),
         }),
       },
     });
@@ -129,19 +136,26 @@ const updateFileChuncks = async ({
 
       // update final id in db and also progress ----------------------
       if (res?.id) {
-        await produceMessage({
-          topic: KAFKA_TOPICS.UPDATE_DB,
-          message: {
-            key: UPDATE_DB_KEYS.UPDATE_FINAL_FILE_ID,
-            value: JSON.stringify({
-              fileTransferId: fileTransferId,
-              id: res?.id,
-            }),
-          },
-        });
+        // await produceMessage({
+        //   topic: KAFKA_TOPICS.UPDATE_DB,
+        //   message: {
+        //     key: UPDATE_DB_KEYS.UPDATE_FINAL_FILE_ID,
+        //     value: JSON.stringify({
+        //       fileTransferId: fileTransferId,
+        //       id: res?.id,
+        //     }),
+        //   },
+        // });
+
+        await prisma.fileTransfer.update({
+          where:{id:fileTransferId},
+          data:{
+            finalId: res?.id
+          }
+        })
+
       }
     }
-
   } catch (error) {
     throw new Error(`error -> APPS>HELPERS>UPDATEFILECHUNCKS: ${file?.name}`);
   }
@@ -176,9 +190,67 @@ export const driveFileTransfer = async ({
       file,
       fileTransferId,
       sourceStream: sourceStream?.data,
-      uploadUri: resumableUri
+      uploadUri: resumableUri,
     });
   } catch (error) {
     console.log("error -> APPS>HELPERS>DRIVEFILETRANSFER :::----:::", error);
+  }
+};
+
+const verifyChecksumsHelper = (
+  initalChecksum: string | undefined | null,
+  finalChecksum: string | undefined | null
+) => {
+  if (initalChecksum) {
+    if (initalChecksum === finalChecksum) {
+      return true;
+    }
+    return false;
+  }
+
+  return true;
+};
+
+export const comparesCheckSums = async ({
+  refreshTokenRecieverAccount,
+  refreshTokenSenderAccount,
+  finalId,
+  initalId,
+}: verifyChecksumFileTransferInterface) => {
+  try {
+    const senderGoogleClient = new GoogleManager(refreshTokenSenderAccount);
+    const recieverGoogleClient = new GoogleManager(refreshTokenRecieverAccount);
+
+    const SourcefileData:any = await senderGoogleClient.getDriveFileById(initalId);
+    const DestfileData:any = await recieverGoogleClient.getDriveFileById(finalId);
+
+    if (!SourcefileData || !DestfileData) {
+      throw new Error("Source/Dest file not found");
+    }
+    
+    // console.log("Sourcefile:", SourcefileData?.data)
+    // console.log("Destfile:", DestfileData?.data)
+
+    if(!SourcefileData.data.md5Checksum && !SourcefileData.data.sha256Checksum && !SourcefileData.data.sha1Checksum){
+      throw new Error("No Checksum found")
+    }
+
+    const md5ChecksumCheck = verifyChecksumsHelper(SourcefileData.data.md5Checksum, DestfileData.data.md5Checksum)
+    const sha256ChecksumCheck = verifyChecksumsHelper(SourcefileData.data.sha256Checksum, DestfileData.data.sha256Checksum)
+    const sha1ChecksumCheck = verifyChecksumsHelper(SourcefileData.data.sha1Checksum, DestfileData.data.sha1Checksum)
+    const sizeCheck = verifyChecksumsHelper(SourcefileData.data.size, DestfileData.data.size)
+
+    console.log("Checksum checks are:", md5ChecksumCheck, sha1ChecksumCheck, sha256ChecksumCheck, sizeCheck)
+
+    if(!(md5ChecksumCheck && sha256ChecksumCheck && sha1ChecksumCheck && sizeCheck)){
+      throw new Error("Verification failed")
+    }
+
+  } catch (error: any) {
+    console.log(
+      "error -> APPS>HELPERS>VERIFYCHECKSUMFILETRANSFER :::----:::",
+      error
+    );
+    throw new Error(error?.message);
   }
 };

@@ -105,6 +105,30 @@ class GoogleManager {
     }
   }
 
+  public async getDriveFileById(fileId: string) {
+    if (!this.drive) {
+      throw new Error("Google Drive client is not initialized.");
+    }
+
+    try {
+      const file = await this.drive.files.get(
+        {
+          fileId: fileId,
+          fields:'id, name, mimeType, thumbnailLink, size, md5Checksum, sha256Checksum, sha1Checksum'
+        }
+      );
+
+      if (!file) {
+        throw new Error("No File Found");
+      }
+
+      return file;
+    } catch (error) {
+      console.error("Error fethcing Drive files:", error);
+      throw new Error("Error in Fetching the file from drive");
+    }
+  }
+
   public async getFileReadableStream(fileId: string, fileName: string) {
     if (!this.drive) {
       throw new Error("Google Drive client is not initialized.");
@@ -153,8 +177,6 @@ class GoogleManager {
         "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
         requestBody
       );
-
-      console.log("resumable uri", uriData?.headers?.location);
 
       return uriData?.headers?.location as string;
     } catch (error) {
