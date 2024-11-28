@@ -1,0 +1,7 @@
+node_modules
+documentation
+local_backup
+
+/node_modules
+/documentation
+/local_backup

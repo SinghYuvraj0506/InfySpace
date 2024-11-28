@@ -1,7 +1,6 @@
 {
   "name": "infyspace",
   "module": "index.ts",
-  "type": "module",
   "devDependencies": {
     "@types/bun": "latest",
     "@types/cors": "^2.8.17",
@@ -10,8 +9,7 @@
     "prisma": "^5.20.0"
   },
   "scripts": {
-    "build": "tsc",
-    "prestart": "bun run build",
+    "build": "npx prisma generate && tsc",
     "start": "node dist/index.js",
     "dev": "bun --watch run src/index.ts"
   },

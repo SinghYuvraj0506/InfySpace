@@ -225,12 +225,14 @@ const verifyChecksumsHelper = (
 export const comparesCheckSums = async ({
   refreshTokenRecieverAccount,
   refreshTokenSenderAccount,
+  senderEmail,
+  recieverEmail,
   finalId,
   initalId,
 }: verifyChecksumFileTransferInterface) => {
   try {
-    const senderGoogleClient = new GoogleManager(refreshTokenSenderAccount);
-    const recieverGoogleClient = new GoogleManager(refreshTokenRecieverAccount);
+    const senderGoogleClient = new GoogleManager(refreshTokenSenderAccount,senderEmail);
+    const recieverGoogleClient = new GoogleManager(refreshTokenRecieverAccount,recieverEmail);
 
     const SourcefileData:any = await senderGoogleClient.getDriveFileById(initalId);
     const DestfileData:any = await recieverGoogleClient.getDriveFileById(finalId);
